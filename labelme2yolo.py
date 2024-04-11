@@ -1,7 +1,8 @@
 '''
-Created on Aug 18, 2021
+Modified on Apr 11, 2024
 
-@author: xiaosonh
+credit to @author: xiaosonh
+modifier : hanjayahsu
 '''
 import os
 import sys
@@ -70,10 +71,14 @@ class Labelme2YOLO(object):
             
             return train_json_names, val_json_names
         
-        train_idxs, val_idxs = train_test_split(range(len(json_names)), 
-                                                test_size=val_size)
+        if val_size > 0:
+            train_idxs, val_idxs = train_test_split(range(len(json_names)), test_size=val_size)
+            val_json_names = [json_names[val_idx] for val_idx in val_idxs]
+        else:
+            train_idxs = range(len(json_names))
+            val_json_names = []
+
         train_json_names = [json_names[train_idx] for train_idx in train_idxs]
-        val_json_names = [json_names[val_idx] for val_idx in val_idxs]
         
         return train_json_names, val_json_names
     
@@ -81,12 +86,21 @@ class Labelme2YOLO(object):
         json_names = [file_name for file_name in os.listdir(self._json_dir) \
                       if os.path.isfile(os.path.join(self._json_dir, file_name)) and \
                       file_name.endswith('.json')]
+        img_names = [file_name for file_name in os.listdir(self._json_dir) \
+                      if os.path.isfile(os.path.join(self._json_dir, file_name)) and \
+                      file_name.endswith('.jpg')]
+
+        negative_img_names = []
+        if len(json_names) != len(img_names):
+            negative_img_names = [file_name for file_name in img_names \
+                                  if file_name.replace(".jpg", ".json") not in json_names ]
+
         folders =  [file_name for file_name in os.listdir(self._json_dir) \
                     if os.path.isdir(os.path.join(self._json_dir, file_name))]
         train_json_names, val_json_names = self._train_test_split(folders, json_names, val_size)
-        
+
         self._make_train_val_dir()
-    
+
         # convert labelme object to yolo format object, and save them to files
         # also get image from labelme json file and save them under images folder
         for target_dir, json_names in zip(('train/', 'val/'), 
@@ -108,6 +122,21 @@ class Labelme2YOLO(object):
                                       target_dir, 
                                       yolo_obj_list)
         
+        if len(negative_img_names) > 0:
+            print(f"Creating negative labels.")
+            target_dir = 'train/'
+            for img_names in negative_img_names:
+                img_path = os.path.join(self._json_dir, img_names)
+                label_name = img_names.replace(".jpg", ".txt")
+                print('Creating %s for %s ...' % (label_name, target_dir.replace('/', '')))
+
+                label_path = os.path.join(self._label_dir_path, target_dir, label_name)
+                os.system(f"touch {label_path}")
+
+                save_img_name = img_names.replace(".jpg", ".png")
+                save_img_path = os.path.join(self._image_dir_path, target_dir, save_img_name)
+                os.system(f"cp {img_path} {save_img_path}")
+
         print('Generating dataset.yaml file ...')
         self._save_dataset_yaml()
                 

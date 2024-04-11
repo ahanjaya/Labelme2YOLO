@@ -64,5 +64,13 @@ Script would generate YOLO format text label and image under **labelme_json_dir*
 /home/username/labelme_json_dir/2.png
 ```
 
+---
+
+## Convert JSON folder with negative picture [without .json file] 
+The purpose is for train [YOLOv8](https://github.com/ultralytics/ultralytics) instance segmentation.
+```
+python labelme2yolo_with_negative_sample.py --json_dir /home/username/labelme_json_dir/ --val_size 0.0 --seg
+```
+
 ##
 Only tested on Centos 7/Python 3.6 environment.
